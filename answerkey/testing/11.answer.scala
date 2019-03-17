@@ -11,6 +11,6 @@ case class SGen[+A](g: Int => Gen[A]) {
     SGen(g2)
   }
 
-  def **[B](s2: SGen[B]): SGen[(A,B)] =
+  def **[B](s2: SGen[B]): SGen[(A, B)] =
     SGen(n => apply(n) ** s2(n))
 }

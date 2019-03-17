@@ -6,6 +6,6 @@ case class Id[A](value: A) {
 object Id {
   val idMonad = new Monad[Id] {
     def unit[A](a: => A) = Id(a)
-    def flatMap[A,B](ida: Id[A])(f: A => Id[B]): Id[B] = ida flatMap f
+    def flatMap[A, B](ida: Id[A])(f: A => Id[B]): Id[B] = ida flatMap f
   }
 }
