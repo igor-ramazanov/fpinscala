@@ -1,0 +1,5 @@
+package fpinscala
+
+object Main {
+  def main(args: Array[String]): Unit = {}
+}

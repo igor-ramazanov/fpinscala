@@ -143,18 +143,17 @@ object IO1 {
       result <- acc.get
     } yield result
 
-  val factorialREPL: IO[Unit] = sequence_(
-    IO { println(helpstring) },
-    doWhile { IO { readLine } } { line =>
-      val ok = line != "q"
-      when(ok) {
-        for {
-          n <- factorial(line.toInt)
-          _ <- IO { println("factorial: " + n) }
-        } yield ()
-      }
+  val factorialREPL: IO[Unit] = sequence_(IO { println(helpstring) }, doWhile {
+    IO { readLine }
+  } { line =>
+    val ok = line != "q"
+    when(ok) {
+      for {
+        n <- factorial(line.toInt)
+        _ <- IO { println("factorial: " + n) }
+      } yield ()
     }
-  )
+  })
 }
 
 object IO2a {
@@ -485,8 +484,9 @@ object IO3 {
     }
   }
 
-  def runFree[F[_], G[_], A](free: Free[F, A])(t: F ~> G)(
-      implicit G: Monad[G]): G[A] =
+  def runFree[F[_], G[_], A](
+    free: Free[F, A]
+  )(t: F ~> G)(implicit G: Monad[G]): G[A] =
     step(free) match {
       case Return(a)              => G.unit(a)
       case Suspend(r)             => t(r)

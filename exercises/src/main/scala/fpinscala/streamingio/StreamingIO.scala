@@ -236,8 +236,9 @@ object SimpleStreamTransducers {
     def monad[I]: Monad[({ type f[x] = Process[I, x] })#f] =
       new Monad[({ type f[x] = Process[I, x] })#f] {
         def unit[O](o: => O): Process[I, O] = emit(o)
-        def flatMap[O, O2](p: Process[I, O])(
-            f: O => Process[I, O2]): Process[I, O2] =
+        def flatMap[O, O2](
+          p: Process[I, O]
+        )(f: O => Process[I, O2]): Process[I, O2] =
           p flatMap f
       }
 
@@ -321,10 +322,12 @@ object SimpleStreamTransducers {
     def mean: Process[Double, Double] = ???
 
     def loop[S, I, O](z: S)(f: (I, S) => (O, S)): Process[I, O] =
-      await((i: I) =>
-        f(i, z) match {
-          case (o, s2) => emit(o, loop(s2)(f))
-      })
+      await(
+        (i: I) =>
+          f(i, z) match {
+            case (o, s2) => emit(o, loop(s2)(f))
+        }
+      )
 
     /* Exercise 4: Implement `sum` and `count` in terms of `loop` */
 
@@ -369,7 +372,8 @@ object SimpleStreamTransducers {
       await((i: I) => emit(Some(i), terminated[I]), emit(None))
 
     def processFile[A, B](f: java.io.File, p: Process[String, A], z: B)(
-        g: (B, A) => B): IO[B] = IO {
+      g: (B, A) => B
+    ): IO[B] = IO {
       @annotation.tailrec
       def go(ss: Iterator[String], cur: Process[String, A], acc: B): B =
         cur match {
@@ -628,8 +632,9 @@ object GeneralizedStreamTransducers {
                       tail: Process[F, O] = Halt[F, O](End)): Process[F, O] =
       Emit(head, tail)
 
-    def await[F[_], A, O](req: F[A])(
-        recv: Either[Throwable, A] => Process[F, O]): Process[F, O] =
+    def await[F[_], A, O](
+      req: F[A]
+    )(recv: Either[Throwable, A] => Process[F, O]): Process[F, O] =
       Await(req, recv)
 
     /**
@@ -644,8 +649,9 @@ object GeneralizedStreamTransducers {
      * Safely produce `p`, or run `cleanup` and halt gracefully with the
      * exception thrown while evaluating `p`.
      */
-    def TryOr[F[_], O](p: => Process[F, O])(
-        cleanup: Process[F, O]): Process[F, O] =
+    def TryOr[F[_], O](
+      p: => Process[F, O]
+    )(cleanup: Process[F, O]): Process[F, O] =
       try p
       catch { case e: Throwable => cleanup ++ Halt(e) }
 
@@ -653,9 +659,9 @@ object GeneralizedStreamTransducers {
      * Safely produce `p`, or run `cleanup` or `fallback` if an exception
      * occurs while evaluating `p`.
      */
-    def TryAwait[F[_], O](p: => Process[F, O])(
-        fallback: Process[F, O],
-        cleanup: Process[F, O]): Process[F, O] =
+    def TryAwait[F[_], O](
+      p: => Process[F, O]
+    )(fallback: Process[F, O], cleanup: Process[F, O]): Process[F, O] =
       try p
       catch {
         case End          => fallback
@@ -724,8 +730,9 @@ object GeneralizedStreamTransducers {
      * `R` (like a file handle) that we want to ensure is released.
      * See `lines` below for an example use.
      */
-    def resource[R, O](acquire: IO[R])(use: R => Process[IO, O])(
-        release: R => Process[IO, O]): Process[IO, O] =
+    def resource[R, O](
+      acquire: IO[R]
+    )(use: R => Process[IO, O])(release: R => Process[IO, O]): Process[IO, O] =
       eval(acquire) flatMap { r =>
         use(r).onComplete(release(r))
       }
@@ -733,8 +740,9 @@ object GeneralizedStreamTransducers {
     /*
      * Like `resource`, but `release` is a single `IO` action.
      */
-    def resource_[R, O](acquire: IO[R])(use: R => Process[IO, O])(
-        release: R => IO[Unit]): Process[IO, O] =
+    def resource_[R, O](
+      acquire: IO[R]
+    )(use: R => Process[IO, O])(release: R => IO[Unit]): Process[IO, O] =
       resource(acquire)(use)(release andThen (eval_[IO, Unit, O]))
 
     /*
@@ -783,15 +791,18 @@ object GeneralizedStreamTransducers {
     /* Some helper functions to improve type inference. */
 
     def await1[I, O](
-        recv: I => Process1[I, O],
-        fallback: => Process1[I, O] = halt1[I, O]): Process1[I, O] =
-      Await(Get[I],
-            (e: Either[Throwable, I]) =>
-              e match {
-                case Left(End) => fallback
-                case Left(err) => Halt(err)
-                case Right(i)  => Try(recv(i))
-            })
+      recv: I => Process1[I, O],
+      fallback: => Process1[I, O] = halt1[I, O]
+    ): Process1[I, O] =
+      Await(
+        Get[I],
+        (e: Either[Throwable, I]) =>
+          e match {
+            case Left(End) => fallback
+            case Left(err) => Halt(err)
+            case Right(i)  => Try(recv(i))
+        }
+      )
 
     def emit1[I, O](h: O, tl: Process1[I, O] = halt1[I, O]): Process1[I, O] =
       emit(h, tl)
@@ -814,13 +825,15 @@ object GeneralizedStreamTransducers {
       await1(
         i =>
           if (f(i)) emit(i, takeWhile(f))
-          else halt1)
+          else halt1
+      )
 
     def dropWhile[I](f: I => Boolean): Process1[I, I] =
       await1(
         i =>
           if (f(i)) dropWhile(f)
-          else emit(i, id))
+          else emit(i, id)
+      )
 
     def id[I]: Process1[I, I] =
       await1((i: I) => emit(i, id))
@@ -864,8 +877,9 @@ object GeneralizedStreamTransducers {
       Halt[T[I, I2]#f, O](End)
 
     def awaitL[I, I2, O](
-        recv: I => Tee[I, I2, O],
-        fallback: => Tee[I, I2, O] = haltT[I, I2, O]): Tee[I, I2, O] =
+      recv: I => Tee[I, I2, O],
+      fallback: => Tee[I, I2, O] = haltT[I, I2, O]
+    ): Tee[I, I2, O] =
       await[T[I, I2]#f, I, O](L) {
         case Left(End) => fallback
         case Left(err) => Halt(err)
@@ -873,8 +887,9 @@ object GeneralizedStreamTransducers {
       }
 
     def awaitR[I, I2, O](
-        recv: I2 => Tee[I, I2, O],
-        fallback: => Tee[I, I2, O] = haltT[I, I2, O]): Tee[I, I2, O] =
+      recv: I2 => Tee[I, I2, O],
+      fallback: => Tee[I, I2, O] = haltT[I, I2, O]
+    ): Tee[I, I2, O] =
       await[T[I, I2]#f, I2, O](R) {
         case Left(End) => fallback
         case Left(err) => Halt(err)
@@ -967,8 +982,9 @@ object GeneralizedStreamTransducers {
      */
     import java.sql.{Connection, PreparedStatement, ResultSet}
 
-    def query(conn: IO[Connection])
-      : Channel[IO, Connection => PreparedStatement, Map[String, Any]] =
+    def query(
+      conn: IO[Connection]
+    ): Channel[IO, Connection => PreparedStatement, Map[String, Any]] =
       resource_ { conn } { conn =>
         constant { (q: Connection => PreparedStatement) =>
           resource_ {

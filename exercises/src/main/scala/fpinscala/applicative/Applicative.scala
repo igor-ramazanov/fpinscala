@@ -29,10 +29,12 @@ trait Applicative[F[_]] extends Functor[F] {
   def factor[A, B](fa: F[A], fb: F[B]): F[(A, B)] = ???
 
   def product[G[_]](
-      G: Applicative[G]): Applicative[({ type f[x] = (F[x], G[x]) })#f] = ???
+    G: Applicative[G]
+  ): Applicative[({ type f[x] = (F[x], G[x]) })#f] = ???
 
   def compose[G[_]](
-      G: Applicative[G]): Applicative[({ type f[x] = F[G[x]] })#f] = ???
+    G: Applicative[G]
+  ): Applicative[({ type f[x] = F[G[x]] })#f] = ???
 
   def sequenceMap[K, V](ofa: Map[K, F[V]]): F[Map[K, V]] = ???
 }
@@ -56,8 +58,9 @@ object Monad {
 
   def stateMonad[S] = new Monad[({ type f[x] = State[S, x] })#f] {
     def unit[A](a: => A): State[S, A] = State(s => (a, s))
-    override def flatMap[A, B](st: State[S, A])(
-        f: A => State[S, B]): State[S, B] =
+    override def flatMap[A, B](
+      st: State[S, A]
+    )(f: A => State[S, B]): State[S, B] =
       st flatMap f
   }
 
@@ -110,18 +113,21 @@ trait Traverse[F[_]] extends Functor[F] with Foldable[F] {
 
   override def foldMap[A, B](as: F[A])(f: A => B)(mb: Monoid[B]): B =
     traverse[({ type f[x] = Const[B, x] })#f, A, Nothing](as)(f)(
-      monoidApplicative(mb))
+      monoidApplicative(mb)
+    )
 
   def traverseS[S, A, B](fa: F[A])(f: A => State[S, B]): State[S, F[B]] =
     traverse[({ type f[x] = State[S, x] })#f, A, B](fa)(f)(Monad.stateMonad)
 
   def mapAccum[S, A, B](fa: F[A], s: S)(f: (A, S) => (B, S)): (F[B], S) =
-    traverseS(fa)((a: A) =>
-      (for {
-        s1 <- get[S]
-        (b, s2) = f(a, s1)
-        _ <- set(s2)
-      } yield b)).run(s)
+    traverseS(fa)(
+      (a: A) =>
+        (for {
+          s1 <- get[S]
+          (b, s2) = f(a, s1)
+          _ <- set(s2)
+        } yield b)
+    ).run(s)
 
   override def toList[A](fa: F[A]): List[A] =
     mapAccum(fa, List[A]())((a, s) => ((), a :: s))._2.reverse
@@ -134,11 +140,13 @@ trait Traverse[F[_]] extends Functor[F] with Foldable[F] {
   override def foldLeft[A, B](fa: F[A])(z: B)(f: (B, A) => B): B = ???
 
   def fuse[G[_], H[_], A, B](fa: F[A])(f: A => G[B], g: A => H[B])(
-      implicit G: Applicative[G],
-      H: Applicative[H]): (G[F[B]], H[F[B]]) = ???
+    implicit G: Applicative[G],
+    H: Applicative[H]
+  ): (G[F[B]], H[F[B]]) = ???
 
   def compose[G[_]](
-      implicit G: Traverse[G]): Traverse[({ type f[x] = F[G[x]] })#f] = ???
+    implicit G: Traverse[G]
+  ): Traverse[({ type f[x] = F[G[x]] })#f] = ???
 }
 
 object Traverse {
