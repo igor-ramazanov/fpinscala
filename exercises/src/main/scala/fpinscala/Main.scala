@@ -1,10 +1,11 @@
 package fpinscala
 
-import fpinscala.laziness._
-import fpinscala.laziness.Stream._
+import fpinscala.state._
+import fpinscala.state.State._
+import fpinscala.state.RNG._
 
 object Main {
   def main(args: Array[String]): Unit = {
-    println(Stream(1, 2, 3).scanRight(0)(_ + _).toList)
+    println(mapViaFlatMap(int)(i => List.fill(i)("x"))(RNG.Simple(42)))
   }
 }
